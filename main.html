@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OmniApp - Dashboard</title>
 
-  <!-- AdSense Script (placed in <head>) -->
+  <!-- AdSense Script -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
       crossorigin="anonymous"></script>
 
@@ -55,7 +55,7 @@
     .review-item span { font-weight:bold; }
 
     /* Ad container */
-    #adContainer { width:320px; height:50px; margin:10px auto; text-align:center; }
+    #adContainer { width:100%; max-width:320px; margin:10px auto; text-align:center; }
   </style>
 </head>
 <body>
@@ -79,6 +79,16 @@
 
     <div class="balance">
       <div id="balance"><div class="loading-spinner"></div></div>
+    </div>
+
+    <!-- Responsive AdSense Banner -->
+    <div id="adContainer">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-3501684787752549"
+           data-ad-slot="1234567890"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
     </div>
 
     <div class="slider-container" id="sliderContainer">
@@ -109,15 +119,6 @@
       <div class="review-item">Pending ⏱ <span id="pendingCount">0</span></div>
       <div class="review-item">Cancelled ❌ <span id="cancelledCount">0</span></div>
     </div>
-
-    <!-- Ad Banner -->
-    <div id="adContainer">
-      <ins class="adsbygoogle"
-           style="display:inline-block;width:320px;height:50px"
-           data-ad-client="ca-pub-3501684787752549"
-           data-ad-slot="YOUR_AD_SLOT_ID"></ins>
-    </div>
-
   </div>
 
   <!-- Push AdSense ads -->
@@ -170,7 +171,7 @@
     document.getElementById("performTaskBtn").onclick = ()=>go("perform_task.html");
     document.getElementById("createAdsBtn").onclick = ()=>go("post advert.html");
 
-    // Task tracking
+    // Firebase task tracking
     let doneSet = new Set();
     let cancelledSet = new Set();
     let pendingTaskIds = new Set();
@@ -182,7 +183,6 @@
       if(!user){ location.href="index.html"; return; }
       welcomeText.innerText = "HELLO, " + (user.email||"User").split("@")[0].toUpperCase();
 
-      // Real-time balance update
       onValue(ref(db, `users/${user.uid}/balance`), snapshot=>{
         let bal = snapshot.exists() ? snapshot.val() : 0;
         balanceEl.innerHTML = formatMoney(bal);
@@ -193,7 +193,6 @@
       loadSliderImages();
     });
 
-    // Watch tasks and auto-complete pending tasks every 30s
     function watchUserTaskPaths(uid){
       const pendingRef = ref(db, `users/${uid}/pending`);
       const doneRef = ref(db, `users/${uid}/doneTasks`);
@@ -201,7 +200,6 @@
       const cancelledRef = ref(db, `users/${uid}/cancelledTasks`);
       const activeRef = ref(db, `users/${uid}/activeTask`);
 
-      // Done tasks
       onValue(doneRef, snap => {
         doneSet.clear();
         if (snap.exists()) Object.keys(snap.val()).forEach(k => doneSet.add(k));
@@ -209,7 +207,6 @@
         recomputeAvailable();
       });
 
-      // Cancelled tasks
       onValue(cancelledRef, snap => {
         cancelledSet.clear();
         if (snap.exists()) Object.keys(snap.val()).forEach(k => cancelledSet.add(k));
@@ -217,7 +214,6 @@
         recomputeAvailable();
       });
 
-      // Pending tasks real-time display
       async function updatePending(){
         const snap = await get(pendingRef);
         pendingTaskIds.clear();
@@ -227,10 +223,8 @@
           const val = snap.val();
           pendingEntriesCount = Object.keys(val).length;
           Object.values(val).forEach(p=>{
-            if(p){
-              if(p.taskId) pendingTaskIds.add(String(p.taskId));
-              if(p.reward) pendingTotal += parseFloat(p.reward);
-            }
+            if(p && p.taskId) pendingTaskIds.add(String(p.taskId));
+            if(p && p.reward) pendingTotal += parseFloat(p.reward);
           });
         }
         document.getElementById("pendingCount").innerHTML = `${pendingEntriesCount} (${formatMoney(pendingTotal)})`;
@@ -239,7 +233,6 @@
       onValue(pendingRef, snap => updatePending());
       updatePending();
 
-      // Auto-complete pending tasks
       setInterval(async ()=>{
         const snap = await get(pendingRef);
         if(!snap.exists()) return;
@@ -251,9 +244,7 @@
         Object.entries(pendingData).forEach(([key, p])=>{
           if(p && p.taskId && p.reward){
             totalReward += parseFloat(p.reward);
-            // Move to doneTasks
             updates[`users/${uid}/doneTasks/${p.taskId}`] = true;
-            // Remove from pending
             updates[`users/${uid}/pending/${key}`] = null;
           }
         });
@@ -266,14 +257,12 @@
         }
       }, 30000);
 
-      // Active task
       onValue(activeRef, snap => {
         activeTaskId = (snap.exists() && snap.val().taskId) ? String(snap.val().taskId) : null;
         recomputeAvailable();
       });
     }
 
-    // Watch created tasks
     function watchCreateTasks(){
       onValue(ref(db, `create_task`), snap => {
         createTasksMap = snap.exists() ? snap.val() : {};
@@ -281,7 +270,6 @@
       });
     }
 
-    // Recompute available tasks
     function recomputeAvailable(){
       let available = 0;
       if(createTasksMap && typeof createTasksMap==="object"){
@@ -300,7 +288,6 @@
       document.getElementById("taskCount").textContent = `(${available}) Available Task`;
     }
 
-    // Slider logic
     const sliderContainer = document.getElementById("sliderContainer");
     const slider = document.getElementById("slider");
     const dotsContainer = document.getElementById("dots");
@@ -339,15 +326,7 @@
       slider.dataset.current=index; slider.dataset.total=total;
     }
 
-    function startAutoSlide(){
-      stopAutoSlide();
-      slideInterval=setInterval(()=>{
-        let idx=parseInt(slider.dataset.current||0);
-        let total=parseInt(slider.dataset.total||0);
-        idx=(idx+1)%total; showSlide(idx,total);
-      },4000);
-    }
-
+    function startAutoSlide(){ stopAutoSlide(); slideInterval=setInterval(()=>{ let idx=parseInt(slider.dataset.current||0); let total=parseInt(slider.dataset.total||0); idx=(idx+1)%total; showSlide(idx,total); },4000); }
     function stopAutoSlide(){ if(slideInterval) clearInterval(slideInterval); }
   </script>
 </body>
