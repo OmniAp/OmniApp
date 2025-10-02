@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>OmniApp Login</title>
+
+  <!-- AdSense Meta -->
+  <meta name="google-adsense-account" content="ca-pub-3501684787752549">
+
+  <!-- AdSense Script -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
+     crossorigin="anonymous"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
 
@@ -35,7 +43,7 @@
       margin-bottom: 15px;
       border-radius: 50%;
       object-fit: cover;
-      border: 3px solid #2196F3
+      border: 3px solid #2196F3;
     }
 
     .header {
@@ -157,7 +165,7 @@
 <body>
 
   <div class="container">
-    <img src="omni.png" class="logo" alt="Omni Logo">
+    <img src="omni.jpg" class="logo" alt="Omni Logo">
     <div class="header">Login Page</div>
 
     <form id="loginForm">
@@ -186,7 +194,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script>
-    // Firebase config (your project)
     var firebaseConfig = {
       apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
       authDomain: "bets-d795d.firebaseapp.com",
@@ -230,7 +237,6 @@
         });
     });
 
-    // Loader animation when switching to register
     const goRegister = document.getElementById("goRegister");
     goRegister.addEventListener("click", function(e) {
       e.preventDefault();

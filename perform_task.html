@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OmniApp - Perform Task</title>
+
+  <!-- AdSense Meta -->
+  <meta name="google-adsense-account" content="ca-pub-3501684787752549">
+
+  <!-- AdSense Script -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
+     crossorigin="anonymous"></script>
+
   <style>
     body { font-family: 'Comic Neue', cursive; background:#f5f5f5; margin:0; padding:0; }
     .header { display:flex; align-items:center; gap:10px; padding:10px 15px; background:#e8f3ff; }
@@ -28,7 +36,7 @@
 </head>
 <body>
 <div class="header">
-  <img src="omni.png" alt="Omni Logo">
+  <img src="omni.jpg" alt="Omni Logo">
   <h1>Perform Tasks</h1>
 </div>
 
@@ -61,6 +69,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
@@ -111,13 +120,12 @@ async function processPendingRewards() {
   snap.forEach(childSnap => {
     const reward = parseFloat(childSnap.val().reward || 0);
     totalPending += reward;
-    updates[childSnap.key] = null; // mark for removal
+    updates[childSnap.key] = null;
   });
 
   if (totalPending > 0) {
     await db.ref("users/" + uid + "/balance").transaction(b => (b || 0) + totalPending);
     await pendingRef.update(updates);
-    console.log(`Processed pending rewards: ₦${totalPending.toFixed(2)}`);
   }
 }
 
@@ -125,8 +133,6 @@ async function processPendingRewards() {
 auth.onAuthStateChanged(async (user) => {
   if (!user) { window.location.href = "index.html"; return; }
   uid = user.uid;
-
-  // process pending first
   await processPendingRewards();
 
   db.ref("users/" + uid + "/balance").on("value", snap => {
@@ -209,8 +215,7 @@ submitBtn.addEventListener("click", async () => {
     userId: uid,
     username: usernameInput.value.trim(),
     proofUrl: url,
-    reward: reward,
-    timestamp: Date.now()
+    reward: reward,timestamp: Date.now()
   });
 
   // mark as done
@@ -239,8 +244,23 @@ function resetTaskUI() {
   taskBox.style.display = "none";
   fileInput.value = "";
   usernameInput.value = "";
-  currentTask = null; currentTaskId = null;
+  currentTask = null;
+  currentTaskId = null;
 }
 </script>
+
+<!-- Example AdSense ad placement -->
+<div style="text-align:center; margin-top:20px;">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-3501684787752549"
+       data-ad-slot="1234567890"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+</div>
+
 </body>
 </html>

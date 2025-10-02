@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>OmniApp Register</title>
+
+  <!-- AdSense Meta -->
+  <meta name="google-adsense-account" content="ca-pub-3501684787752549">
+
+  <!-- AdSense Script -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
+     crossorigin="anonymous"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
 
@@ -191,7 +199,7 @@
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Store details under UID (🔥 not push)
+        // Store details under UID
         await database.ref("details/" + user.uid).set({
           firstname: firstname,
           lastname: lastname,

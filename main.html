@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OmniApp - Dashboard</title>
 
-  <!-- AdSense Script -->
+  <!-- AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
       crossorigin="anonymous"></script>
+  <meta name="google-adsense-account" content="ca-pub-3501684787752549">
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
@@ -54,8 +55,7 @@
     .review-item { font-size:16px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; }
     .review-item span { font-weight:bold; }
 
-    /* Ad container */
-    #adContainer { width:100%; max-width:320px; margin:10px auto; text-align:center; }
+    /* Remove fixed ad container if using auto-ads */
   </style>
 </head>
 <body>
@@ -81,21 +81,13 @@
       <div id="balance"><div class="loading-spinner"></div></div>
     </div>
 
-    <!-- Responsive AdSense Banner -->
-    <div id="adContainer">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-3501684787752549"
-           data-ad-slot="1234567890"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
-
+    <!-- Slider / View Pager -->
     <div class="slider-container" id="sliderContainer">
       <div class="slider" id="slider"></div>
       <div class="dots" id="dots"></div>
     </div>
 
+    <!-- Action Buttons -->
     <div class="action-buttons">
       <div class="icon-btns">
         <div class="icon-btn" id="depositBtn">
@@ -111,8 +103,8 @@
       <button class="performtask-btn" id="performTaskBtn">Perform Task</button>
     </div>
 
+    <!-- Task Counters -->
     <div class="tasks" id="taskCount">(0) Available Task</div>
-
     <div class="reviews">
       <h3>Task Reviews</h3>
       <div class="review-item">Completed ✅ <span id="completedCount">0</span></div>
@@ -121,14 +113,10 @@
     </div>
   </div>
 
-  <!-- Push AdSense ads -->
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
-
+  <!-- Firebase v9 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -149,7 +137,7 @@
     const welcomeText = document.getElementById("welcomeText");
 
     function formatMoney(amount){
-      return `<span style="font-family:Arial,sans-serif">₦</span>${parseFloat(amount || 0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+      return `<span style="font-family:Arial,sans-serif">₦</span>${parseFloat(amount||0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     }
 
     // Toolbar toggle
@@ -165,13 +153,13 @@
     document.getElementById("logoutBtn").onclick = ()=>signOut(auth).then(()=>location.href="index.html");
 
     // Navigation buttons
-    function go(page){ location.href = page; }
+    const go = (page)=>location.href=page;
     document.getElementById("depositBtn").onclick = ()=>go("deposit.html");
     document.getElementById("withdrawBtn").onclick = ()=>go("withdraw.html");
     document.getElementById("performTaskBtn").onclick = ()=>go("perform_task.html");
     document.getElementById("createAdsBtn").onclick = ()=>go("post advert.html");
 
-    // Firebase task tracking
+    // Task tracking variables
     let doneSet = new Set();
     let cancelledSet = new Set();
     let pendingTaskIds = new Set();
@@ -179,46 +167,44 @@
     let activeTaskId = null;
     let createTasksMap = {};
 
-    onAuthStateChanged(auth, async (user)=>{
+    onAuthStateChanged(auth, async user=>{
       if(!user){ location.href="index.html"; return; }
       welcomeText.innerText = "HELLO, " + (user.email||"User").split("@")[0].toUpperCase();
 
       onValue(ref(db, `users/${user.uid}/balance`), snapshot=>{
-        let bal = snapshot.exists() ? snapshot.val() : 0;
-        balanceEl.innerHTML = formatMoney(bal);
+        balanceEl.innerHTML = formatMoney(snapshot.exists()?snapshot.val():0);
       });
 
-      watchUserTaskPaths(user.uid);
+      watchUserTasks(user.uid);
       watchCreateTasks();
       loadSliderImages();
     });
 
-    function watchUserTaskPaths(uid){
+    function watchUserTasks(uid){
       const pendingRef = ref(db, `users/${uid}/pending`);
       const doneRef = ref(db, `users/${uid}/doneTasks`);
-      const balanceRef = ref(db, `users/${uid}/balance`);
       const cancelledRef = ref(db, `users/${uid}/cancelledTasks`);
       const activeRef = ref(db, `users/${uid}/activeTask`);
+      const balanceRef = ref(db, `users/${uid}/balance`);
 
-      onValue(doneRef, snap => {
+      onValue(doneRef, snap=>{
         doneSet.clear();
-        if (snap.exists()) Object.keys(snap.val()).forEach(k => doneSet.add(k));
+        if(snap.exists()) Object.keys(snap.val()).forEach(k=>doneSet.add(k));
         document.getElementById("completedCount").textContent = doneSet.size;
         recomputeAvailable();
       });
 
-      onValue(cancelledRef, snap => {
+      onValue(cancelledRef, snap=>{
         cancelledSet.clear();
-        if (snap.exists()) Object.keys(snap.val()).forEach(k => cancelledSet.add(k));
+        if(snap.exists()) Object.keys(snap.val()).forEach(k=>cancelledSet.add(k));
         document.getElementById("cancelledCount").textContent = cancelledSet.size;
         recomputeAvailable();
       });
 
-      async function updatePending(){
+      const updatePending = async ()=>{
         const snap = await get(pendingRef);
         pendingTaskIds.clear();
-        let pendingTotal = 0;
-        pendingEntriesCount = 0;
+        let pendingTotal=0; pendingEntriesCount=0;
         if(snap.exists()){
           const val = snap.val();
           pendingEntriesCount = Object.keys(val).length;
@@ -229,49 +215,26 @@
         }
         document.getElementById("pendingCount").innerHTML = `${pendingEntriesCount} (${formatMoney(pendingTotal)})`;
         recomputeAvailable();
-      }
-      onValue(pendingRef, snap => updatePending());
+      };
+
+      onValue(pendingRef, snap=>updatePending());
       updatePending();
 
-      setInterval(async ()=>{
-        const snap = await get(pendingRef);
-        if(!snap.exists()) return;
-
-        const pendingData = snap.val();
-        let totalReward = 0;
-        let updates = {};
-
-        Object.entries(pendingData).forEach(([key, p])=>{
-          if(p && p.taskId && p.reward){
-            totalReward += parseFloat(p.reward);
-            updates[`users/${uid}/doneTasks/${p.taskId}`] = true;
-            updates[`users/${uid}/pending/${key}`] = null;
-          }
-        });
-
-        if(totalReward > 0){
-          const balanceSnap = await get(balanceRef);
-          const currentBalance = balanceSnap.exists() ? parseFloat(balanceSnap.val()) : 0;
-          updates[`users/${uid}/balance`] = currentBalance + totalReward;
-          await ref(db).update(updates);
-        }
-      }, 30000);
-
-      onValue(activeRef, snap => {
-        activeTaskId = (snap.exists() && snap.val().taskId) ? String(snap.val().taskId) : null;
+      onValue(activeRef, snap=>{
+        activeTaskId = snap.exists() && snap.val().taskId ? String(snap.val().taskId) : null;
         recomputeAvailable();
       });
     }
 
     function watchCreateTasks(){
-      onValue(ref(db, `create_task`), snap => {
+      onValue(ref(db, `create_task`), snap=>{
         createTasksMap = snap.exists() ? snap.val() : {};
         recomputeAvailable();
       });
     }
 
     function recomputeAvailable(){
-      let available = 0;
+      let available=0;
       if(createTasksMap && typeof createTasksMap==="object"){
         Object.entries(createTasksMap).forEach(([taskId, task])=>{
           if(!task) return;
@@ -288,6 +251,7 @@
       document.getElementById("taskCount").textContent = `(${available}) Available Task`;
     }
 
+    // Slider / ViewPager
     const sliderContainer = document.getElementById("sliderContainer");
     const slider = document.getElementById("slider");
     const dotsContainer = document.getElementById("dots");
@@ -295,12 +259,12 @@
 
     async function loadSliderImages(){
       try{
-        const snap = await get(ref(db, "viewpager"));
+        const snap = await get(ref(db,"viewpager"));
         if(snap.exists()){
           const slides = Object.values(snap.val());
           if(slides.length>0){ renderSlider(slides); startAutoSlide(); }
         }
-      } catch(e){ console.error("Slider load error", e); }
+      }catch(e){ console.error("Slider load error", e); }
     }
 
     function renderSlider(slides){
@@ -308,21 +272,20 @@
       sliderContainer.style.display="block";
       slides.forEach((item, idx)=>{
         const a = document.createElement("a");
-        a.href = item.link||"#"; a.target="_blank";
+        a.href=item.link||"#"; a.target="_blank";
         const img = document.createElement("img"); img.src=item.imageUrl||item.image||"#";
         img.alt="slide"; img.onerror=()=>{ img.style.background="#333"; img.alt="Image not available"; };
         a.appendChild(img); slider.appendChild(a);
-        const dot = document.createElement("div");
-        dot.className = "dot"+(idx===0?" active":"");
-        dot.addEventListener("click", ()=>showSlide(idx, slides.length));
+        const dot = document.createElement("div"); dot.className="dot"+(idx===0?" active":"");
+        dot.addEventListener("click", ()=>showSlide(idx,slides.length));
         dotsContainer.appendChild(dot);
       });
       showSlide(0, slides.length);
     }
 
-    function showSlide(index, total){
-      slider.style.transform = `translateX(-${index*100}%)`;
-      [...dotsContainer.children].forEach((dot,i)=>{ dot.classList.toggle("active", i===index); });
+    function showSlide(index,total){
+      slider.style.transform=`translateX(-${index*100}%)`;
+      [...dotsContainer.children].forEach((dot,i)=>dot.classList.toggle("active", i===index));
       slider.dataset.current=index; slider.dataset.total=total;
     }
 

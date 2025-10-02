@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OmniApp — Deposit</title>
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f7fb; margin:0; padding:0; display:flex; align-items:center; justify-content:center; height:100vh; }
+    .card { width:360px; background:#fff; padding:18px; border-radius:10px; box-shadow:0 6px 18px rgba(20,30,60,0.08); }
+    h2 { margin:0 0 12px; color:#008cff; text-align:center; }
+    label { display:block; margin-top:10px; font-size:13px; color:#333; }
+    input[type="number"], input[type="email"] { width:100%; padding:10px; margin-top:6px; border-radius:6px; border:1px solid #d0d7de; font-size:15px; }
+    button { width:100%; margin-top:14px; padding:12px; border-radius:8px; background:#008cff; color:#fff; border:none; font-weight:600; cursor:pointer; }
+    .note { margin-top:10px; font-size:13px; color:#666; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Deposit</h2>
+
+    <label for="amount">Amount (₦)</label>
+    <input id="amount" type="number" min="100" placeholder="Minimum ₦100" />
+
+    <label for="email">Email (auto-filled if logged in)</label>
+    <input id="email" type="email" placeholder="you@example.com" />
+
+    <button id="payBtn">Pay Now</button>
+
+    <div class="note" id="status"></div>
+  </div>
+
+  <!-- Paystack inline -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+
+  <!-- Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // ===== CONFIG =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+      authDomain: "bets-d795d.firebaseapp.com",
+      databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com",
+      projectId: "bets-d795d",
+      storageBucket: "bets-d795d.appspot.com",
+      messagingSenderId: "384386108287",
+      appId: "1:384386108287:android:d238a5ec8068d9bb9be84a"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    const MIN_DEPOSIT = 100;
+
+    const amountEl = document.getElementById("amount");
+    const emailEl = document.getElementById("email");
+    const payBtn = document.getElementById("payBtn");
+    const statusEl = document.getElementById("status");
+
+    let paystackKey = null;
+    let currentUser = null;
+
+    // 🔹 Fetch Paystack key from Firebase
+    db.ref("settings/paystackPublicKey").once("value").then(snap => {
+      paystackKey = snap.val();
+      if (!paystackKey) {
+        setStatus("❌ Paystack key not set. Contact admin.", true);
+        payBtn.disabled = true;
+      }
+    });
+
+    // 🔹 Auto-fill email if logged in
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        emailEl.value = user.email || "";
+        emailEl.disabled = true;
+      } else {
+        currentUser = null;
+        emailEl.value = "";
+        emailEl.disabled = false;
+      }
+    });
+
+    function setStatus(msg, isError = false){
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? "#c0392b" : "#1f8b4c";
+    }
+
+    payBtn.addEventListener("click", () => {
+      const rawAmount = parseFloat(amountEl.value);
+      if (isNaN(rawAmount) || rawAmount < MIN_DEPOSIT) {
+        setStatus(`Minimum deposit is ₦${MIN_DEPOSIT}`, true);
+        return;
+      }
+
+      const email = (emailEl.value || "").trim();
+      if (!email || !email.includes("@")) {
+        setStatus("Enter a valid email", true);
+        return;
+      }
+
+      if (!paystackKey) {
+        setStatus("Paystack not ready", true);
+        return;
+      }
+
+      setStatus("Opening Paystack...");
+
+      const handler = PaystackPop.setup({
+        key: paystackKey,
+        email: email,
+        amount: Math.round(rawAmount * 100),
+        currency: "NGN",
+        callback: function(response){
+          // Save deposit record
+          const depositRef = db.ref("deposits").push();
+          depositRef.set({
+            amount: rawAmount,
+            email: email,
+            uid: currentUser ? currentUser.uid : null,
+            reference: response.reference,
+            status: "success",
+            created_at: Date.now()
+          }).then(async () => {
+            // ✅ Update user balance
+            if (currentUser) {
+              const userRef = db.ref("users/" + currentUser.uid);
+              const snap = await userRef.once("value");
+              const currentBalance = snap.val() && snap.val().balance ? parseFloat(snap.val().balance) : 0;
+              await userRef.update({
+                balance: currentBalance + rawAmount
+              });
+            }
+
+            setStatus("✅ Deposit successful! Redirecting...");
+            setTimeout(() => window.location.href = "main.html", 1200);
+          }).catch(err => {
+            setStatus("Error saving deposit: " + err.message, true);
+          });
+        },
+        onClose: function(){
+          setStatus("Payment window closed.");
+        }
+      });
+
+      handler.openIframe();
+    });
+  </script>
+</body>
+</html>
