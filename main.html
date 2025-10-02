@@ -4,12 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OmniApp - Dashboard</title>
+
+  <!-- AdSense Script (placed in <head>) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3501684787752549"
+      crossorigin="anonymous"></script>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
     html, body { margin:0; padding:0; height:100%; font-family:'Comic Neue', cursive; background:#fff; }
 
     .container { max-width:1000px; margin:0 auto; padding:10px; height:100%; display:flex; flex-direction:column; }
-
     .header { background:#fff; border:2px solid #008cff; border-radius:12px; display:flex; justify-content:space-between; align-items:center; padding:15px; margin-bottom:15px; }
     .logo { display:flex; align-items:center; gap:15px; }
     .logo img { width:60px; height:60px; border-radius:50%; object-fit:cover; }
@@ -106,18 +110,17 @@
       <div class="review-item">Cancelled ❌ <span id="cancelledCount">0</span></div>
     </div>
 
-    <!-- AdMob Banner under Task Reviews -->
+    <!-- Ad Banner -->
     <div id="adContainer">
       <ins class="adsbygoogle"
            style="display:inline-block;width:320px;height:50px"
-           data-ad-client="ca-pub-2959947594665871"
+           data-ad-client="ca-pub-3501684787752549"
            data-ad-slot="YOUR_AD_SLOT_ID"></ins>
     </div>
 
   </div>
 
-  <!-- AdSense Script -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  <!-- Push AdSense ads -->
   <script>
     (adsbygoogle = window.adsbygoogle || []).push({});
   </script>
