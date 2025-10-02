@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniApp - Create Adverts</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+    body { font-family: 'Comic Neue', cursive; background: #f5f5f5; margin:0; padding:0; }
+    .header { display:flex; align-items:center; gap:10px; padding:10px 15px; background:#e8f3ff; }
+    .header img { width:45px; height:45px; border-radius:50%; object-fit:cover; }
+    .header h1 { font-size:22px; margin:0; color:#333; }
+    .container { max-width:450px; margin:auto; background:#e8f3ff; border-radius:12px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.1); text-align:center; }
+    .balance { font-size:28px; font-weight:bold; margin:10px 0; display:flex; justify-content:center; align-items:center; gap:6px; }
+    .balance .naira { font-family: Arial, Helvetica, sans-serif; font-weight:bold; }
+    .task-box { background:#dff2ff; padding:12px; border-radius:10px; margin:10px 0; }
+    input[type="number"], input[type="text"] { width:80%; padding:10px; border:1px solid #ccc; border-radius:8px; margin:8px 0; font-family:'Comic Neue', cursive; }
+    .social-icons { display:flex; justify-content:space-around; margin:15px 0; flex-wrap:wrap; gap:8px; }
+    .social-icons button { background:none; border:none; padding:0; cursor:pointer; }
+    .social-icons img { width:50px; height:50px; object-fit:cover; border-radius:12px; }
+    .task-buttons { display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; margin-top:10px; }
+    .task-buttons button { background:#bde6ff; border:none; border-radius:8px; padding:10px; font-size:14px; cursor:pointer; text-align:left; font-family:'Comic Neue', cursive; }
+    .task-buttons button:hover { background:#9edaff; }
+    #calculateBtn { margin-bottom:10px; padding:12px 20px; background:#008cff; color:white; border:none; border-radius:10px; font-size:16px; cursor:pointer; font-family:'Comic Neue', cursive; }
+    #calculateBtn:hover { background:#006fcc; }
+    #budgetResult { margin-top:10px; font-size:20px; font-weight:bold; color:#333; }
+    #budgetResult .naira { font-family: Arial, Helvetica, sans-serif; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="omni.png" alt="Omni Logo">
+    <h1>Create Adverts</h1>
+  </div>
+
+  <div class="container">
+    <div class="balance"><span class="naira">₦</span><span id="userBalance">0.00</span></div>
+
+    <div class="task-box">
+      <p id="taskLabel"><b>Which Task Do You Want To Create?</b></p>
+      <input type="number" id="taskAmount" placeholder="Enter Amount">
+      <input type="text" id="redirectLink" placeholder="Your redirect link">
+    </div>
+
+    <button id="calculateBtn">Calculate Budget</button>
+    <div id="budgetResult"><span class="naira">₦</span><span id="budgetValue">0.00</span></div>
+
+    <p>Select Social Media to filter tasks:</p>
+    <div class="social-icons">
+      <button data-platform="telegram"><img src="tele.png" alt="Telegram"></button>
+      <button data-platform="facebook"><img src="face.png" alt="Facebook"></button>
+      <button data-platform="instagram"><img src="insta.png" alt="Instagram"></button>
+      <button data-platform="tiktok"><img src="tik.png" alt="TikTok"></button>
+      <button data-platform="twitter"><img src="twi.png" alt="Twitter"></button>
+      <button data-platform="youtube"><img src="youtube.png" alt="YouTube"></button>
+      <button data-platform="whatsapp"><img src="what.png" alt="WhatsApp"></button>
+    </div>
+
+    <div class="task-box">
+      <div class="task-buttons" id="taskButtons">
+        <!-- Telegram Tasks -->
+        <button data-type="subscribe" data-platform="telegram">Subscribe/Join Telegram Channel/Group</button>
+        <button data-type="react" data-platform="telegram">React To Last 5 Channel/Group Post</button>
+        <button data-type="bot" data-platform="telegram">Join Telegram Bot</button>
+
+        <!-- Facebook Tasks -->
+        <button data-type="follow" data-platform="facebook">Follow Facebook Page</button>
+        <button data-type="like" data-platform="facebook">Like Facebook Page</button>
+        <button data-type="like" data-platform="facebook">Like Facebook Reels/Video</button>
+        <button data-type="like" data-platform="facebook">Like Facebook Post</button>
+
+        <!-- Instagram Tasks -->
+        <button data-type="follow" data-platform="instagram">Follow Instagram Account</button>
+        <button data-type="like" data-platform="instagram">Like Instagram Reels/Videos</button>
+        <button data-type="like" data-platform="instagram">Like Instagram Post</button>
+
+        <!-- TikTok Tasks -->
+        <button data-type="follow" data-platform="tiktok">Follow TikTok Account</button>
+        <button data-type="like" data-platform="tiktok">Like TikTok Video</button>
+
+        <!-- Twitter Tasks -->
+        <button data-type="follow" data-platform="twitter">Follow Twitter Account</button>
+        <button data-type="like" data-platform="twitter">Like Twitter Video</button>
+        <button data-type="like" data-platform="twitter">Like Twitter Post</button>
+
+        <!-- YouTube Tasks -->
+        <button data-type="subscribe" data-platform="youtube">Subscribe YouTube Channel</button>
+        <button data-type="like" data-platform="youtube">Like YouTube Videos/Short</button>
+
+        <!-- WhatsApp Tasks -->
+        <button data-type="subscribe" data-platform="whatsapp">Join WhatsApp Group/Channel</button>
+        <button data-type="react" data-platform="whatsapp">React To Last 3 Channel Post</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+      authDomain: "bets-d795d.firebaseapp.com",
+      databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com",
+      projectId: "bets-d795d",
+      storageBucket: "bets-d795d.appspot.com",
+      messagingSenderId: "384386108287",
+      appId: "1:384386108287:android:d238a5ec8068d9bb9be84a"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const userBalanceEl = document.getElementById('userBalance');
+    const taskButtons = document.querySelectorAll('#taskButtons button');
+    const socialButtons = document.querySelectorAll('.social-icons button');
+    const taskAmount = document.getElementById('taskAmount');
+    const taskLabel = document.getElementById('taskLabel');
+    const calculateBtn = document.getElementById('calculateBtn');
+    const budgetValue = document.getElementById('budgetValue');
+    const redirectLink = document.getElementById('redirectLink');
+
+    let selectedTask = null;
+    let currentBalance = 0;
+    let uid = "";
+
+    // filter by platform
+    socialButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const platform = btn.dataset.platform;
+        taskButtons.forEach(task => {
+          task.style.display = (task.dataset.platform === platform) ? 'block' : 'none';
+        });
+      });
+    });
+
+    // select task
+    taskButtons.forEach(task => {
+      task.addEventListener('click', () => {
+        selectedTask = task;
+        calculateBtn.innerText = "Calculate Budget";
+        budgetValue.innerText = "0.00";
+        const type = task.dataset.type;
+        if (type === 'like') { taskLabel.innerHTML = "<b>Enter Amount of Likes</b>"; taskAmount.placeholder = "Enter Amount of Likes"; }
+        else if (type === 'follow') { taskLabel.innerHTML = "<b>Enter Amount of Followers</b>"; taskAmount.placeholder = "Enter Amount of Followers"; }
+        else if (type === 'subscribe') { taskLabel.innerHTML = "<b>Enter Amount of Subscribers</b>"; taskAmount.placeholder = "Enter Amount of Subscribers"; }
+        else if (type === 'react') { taskLabel.innerHTML = "<b>Enter Amount of Reactions</b>"; taskAmount.placeholder = "Enter Amount of Reactions"; }
+        else if (type === 'bot') { taskLabel.innerHTML = "<b>Enter Amount of Users</b>"; taskAmount.placeholder = "Enter Amount of Users"; }
+      });
+    });
+
+    // load balance
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = "index.html"; return; }
+      uid = user.uid;
+      db.ref("users/" + uid + "/balance").on("value", snapshot => {
+        currentBalance = snapshot.exists() ? parseFloat(snapshot.val()) : 0;
+        userBalanceEl.innerText = currentBalance.toLocaleString("en-NG", {minimumFractionDigits:2,maximumFractionDigits:2});
+      });
+    });
+
+    // calculate + post
+    calculateBtn.addEventListener('click', () => {
+      if (!selectedTask) { alert("Select a task first."); return; }
+      const amount = parseFloat(taskAmount.value);
+      if (isNaN(amount) || amount <= 0) { alert("Enter a valid amount."); return; }
+
+      const taskName = selectedTask.innerText;
+      let calculatedPrice = 0;
+
+      if (taskName.includes("Like") || taskName.includes("React")) calculatedPrice = 10 * amount;
+      else if (taskName.includes("Follow Twitter")) calculatedPrice = 30 * amount;
+      else if (taskName.includes("Follow")) calculatedPrice = 20 * amount;
+      else if (taskName.includes("Subscribe/Join Telegram") || taskName.includes("WhatsApp")) calculatedPrice = 20 * amount;
+      else if (taskName.includes("Subscribe YouTube")) calculatedPrice = 40 * amount;
+      else if (taskName.includes("Follow TikTok")) calculatedPrice =30 * amount;
+      else if (taskName.includes("Join Telegram Bot")) calculatedPrice = 20 * amount;
+
+      // reward per performer = (total/2)/amount
+      const perUserReward = (calculatedPrice / 2) / amount;
+
+      budgetValue.innerText = calculatedPrice.toLocaleString("en-NG", { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+      if (calculateBtn.innerText === "Post Advert") {
+        if (currentBalance < calculatedPrice) { alert("Insufficient balance!"); return; }
+        if (!redirectLink.value.trim()) { alert("Enter redirect link!"); return; }
+
+        // deduct balance
+        db.ref("users/" + uid + "/balance").transaction(balance => {
+          if (balance === null) balance = 0;
+          if (balance >= calculatedPrice) return balance - calculatedPrice;
+          else { alert("Insufficient balance!"); return; }
+        });
+
+        // save task
+        db.ref("create_task").push({
+          ad_type: taskName,
+          amount: amount,
+          link: redirectLink.value.trim(),
+          total_budget: calculatedPrice,
+          reward_per_user: perUserReward.toFixed(2)
+        });
+
+        alert("Advert Created!");
+        calculateBtn.innerText = "Calculate Budget";
+        budgetValue.innerText = "0.00";
+        taskAmount.value = "";
+        redirectLink.value = "";
+      } else {
+        calculateBtn.innerText = "Post Advert";
+      }
+    });
+
+    // reset on input
+    taskAmount.addEventListener('input', () => { 
+      calculateBtn.innerText = "Calculate Budget"; 
+      budgetValue.innerText = "0.00"; 
+    });
+  </script>
+</body>
+</html>

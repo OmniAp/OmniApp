@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OmniApp Register</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
+    body {
+      font-family: 'Comic Neue', cursive;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f9f9f9;
+    }
+
+    .container {
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+      background: #e3f2fd;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .header {
+      font-size: 24px;
+      background: #2196F3;
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      font-family: 'Comic Neue', cursive;
+    }
+
+    .name-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .name-row input {
+      flex: 1;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: 'Comic Neue', cursive;
+    }
+
+    button:hover {
+      background: #1976d2;
+    }
+
+    .link {
+      margin-top: 15px;
+      font-size: 15px;
+    }
+
+    .link a {
+      color: #2196F3;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .show-password {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      font-size: 14px;
+      margin-top: -5px;
+      margin-bottom: 10px;
+    }
+
+    /* Loader */
+    .loader {
+      display: none;
+      margin: 20px auto;
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #2196F3;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">Register Page</div>
+
+    <form id="registerForm">
+      <div class="name-row">
+        <input type="text" id="firstName" placeholder="First Name" required>
+        <input type="text" id="lastName" placeholder="Last Name" required>
+      </div>
+      <input type="email" id="email" placeholder="Email Address" required>
+      <input type="password" id="password" placeholder="Password" required>
+
+      <input type="text" id="state" placeholder="State" required>
+      <input type="text" id="country" placeholder="Country" value="Nigeria" readonly>
+
+      <div class="show-password">
+        <input type="checkbox" id="showPassword">
+        <label for="showPassword">Show Password</label>
+      </div>
+
+      <button type="submit">REGISTER</button>
+    </form>
+
+    <!-- Loader -->
+    <div class="loader" id="loader"></div>
+
+    <div class="link">
+      Already have an account? <a id="goLogin">Login</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // Firebase Config
+    var firebaseConfig = {
+      apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+      authDomain: "bets-d795d.firebaseapp.com",
+      databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com",
+      projectId: "bets-d795d",
+      storageBucket: "bets-d795d.appspot.com",
+      messagingSenderId: "384386108287",
+      appId: "1:384386108287:android:d238a5ec8068d9bb9be84a"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    // Show Password toggle
+    document.getElementById("showPassword").addEventListener("change", function() {
+      const passwordField = document.getElementById("password");
+      passwordField.type = this.checked ? "text" : "password";
+    });
+
+    // Register Form
+    const registerForm = document.getElementById("registerForm");
+    const loader = document.getElementById("loader");
+
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loader.style.display = "block";
+
+      const firstname = document.getElementById("firstName").value;
+      const lastname = document.getElementById("lastName").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const state = document.getElementById("state").value;
+      const country = document.getElementById("country").value;
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Store details under UID (🔥 not push)
+        await database.ref("details/" + user.uid).set({
+          firstname: firstname,
+          lastname: lastname,
+          email: email,
+          country: country,
+          state: state,
+          balance: "0.00",
+          tasks: 0,
+          completed: 0,
+          pending: 0,
+          cancelled: 0
+        });
+
+        alert("Registration Successful!");
+        window.location.href = "main.html"; // redirect
+      } catch (error) {
+        alert("Error: " + error.message);
+      } finally {
+        loader.style.display = "none";
+      }
+    });
+
+    // Redirect to login
+    document.getElementById("goLogin").addEventListener("click", function(e) {
+      e.preventDefault();
+      loader.style.display = "block";
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 500);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OmniApp - Perform Task</title>
+  <style>
+    body { font-family: 'Comic Neue', cursive; background:#f5f5f5; margin:0; padding:0; }
+    .header { display:flex; align-items:center; gap:10px; padding:10px 15px; background:#e8f3ff; }
+    .header img { width:45px; height:45px; border-radius:50%; }
+    .header h1 { font-size:22px; margin:0; color:#333; }
+    .container { max-width:500px; margin:20px auto; background:#fff; border-radius:12px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.1); text-align:center; }
+    .balance { font-size:18px; font-weight:bold; margin:10px 0; }
+    .stats { font-size:15px; margin-bottom:12px; color:#444; }
+    .task { display:none; border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:15px; background:#f0f9ff; text-align:left; }
+    .task h3 { margin:0 0 6px 0; font-size:18px; }
+    .task p { margin:4px 0; }
+    .task button { background:#008cff; color:#fff; padding:8px 12px; border:none; border-radius:8px; cursor:pointer; margin-top:5px; }
+    .task button:hover { background:#006fcc; }
+    .upload-box { margin-top:8px; }
+    .upload-box input { margin:5px 0; width:95%; }
+    #generateBtn { margin-top:15px; background:#28a745; color:#fff; padding:10px 14px; border-radius:8px; border:none; cursor:pointer; }
+    #generateBtn:hover { background:#1f7a31; }
+    #submitBtn[disabled] { background:#aaa; cursor:not-allowed; }
+    #cancelBtn { background:#dc3545; }
+    #cancelBtn:hover { background:#b02a37; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <img src="omni.png" alt="Omni Logo">
+  <h1>Perform Tasks</h1>
+</div>
+
+<div class="container">
+  <div class="balance">Balance: ₦<span id="userBalance">0.00</span></div>
+  <div class="stats">
+    Pending Tasks: <span id="pendingCount">0</span><br>
+    Pending Total ₦<span id="pendingTotal">0.00</span><br>
+    Cancelled: <span id="cancelledCount">0</span>
+  </div>
+  <button id="generateBtn">🎲 Generate Task</button>
+
+  <div id="taskBox" class="task" aria-live="polite">
+    <h3 id="taskTitle"></h3>
+    <p><b>Website:</b> <span id="taskLink"></span></p>
+    <p><b>Reward:</b> ₦<span id="taskReward"></span> per user</p>
+    <p><b>Progress:</b> <span id="taskProgress"></span></p>
+    <button id="visitBtn">Visit Link</button>
+    <div class="upload-box">
+      <input type="file" id="fileInput" accept="image/*"><br>
+      <input type="text" id="usernameInput" placeholder="Your social media name"><br>
+      <button id="submitBtn" disabled>Submit Task</button>
+      <button id="cancelBtn">Cancel Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+  authDomain: "bets-d795d.firebaseapp.com",
+  databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com",
+  projectId: "bets-d795d",
+  storageBucket: "bets-d795d.appspot.com",
+  messagingSenderId: "384386108287",
+  appId: "1:384386108287:android:d238a5ec8068d9bb9be84a"
+};
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.database();
+const storage = firebase.storage();
+
+let uid = "";
+let currentBalance = 0;
+let currentTaskId = null;
+let currentTask = null;
+let visited = false;
+
+const balanceEl = document.getElementById("userBalance");
+const pendingCountEl = document.getElementById("pendingCount");
+const pendingTotalEl = document.getElementById("pendingTotal");
+const cancelledCountEl = document.getElementById("cancelledCount");
+
+const generateBtn = document.getElementById("generateBtn");
+const taskBox = document.getElementById("taskBox");
+const taskTitle = document.getElementById("taskTitle");
+const taskLink = document.getElementById("taskLink");
+const taskReward = document.getElementById("taskReward");
+const taskProgress = document.getElementById("taskProgress");
+const visitBtn = document.getElementById("visitBtn");
+const submitBtn = document.getElementById("submitBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const fileInput = document.getElementById("fileInput");
+const usernameInput = document.getElementById("usernameInput");
+
+// ✅ Process pending rewards
+async function processPendingRewards() {
+  const pendingRef = db.ref("users/" + uid + "/pending");
+  const snap = await pendingRef.once("value");
+  if (!snap.exists()) return;
+
+  let totalPending = 0;
+  const updates = {};
+  snap.forEach(childSnap => {
+    const reward = parseFloat(childSnap.val().reward || 0);
+    totalPending += reward;
+    updates[childSnap.key] = null; // mark for removal
+  });
+
+  if (totalPending > 0) {
+    await db.ref("users/" + uid + "/balance").transaction(b => (b || 0) + totalPending);
+    await pendingRef.update(updates);
+    console.log(`Processed pending rewards: ₦${totalPending.toFixed(2)}`);
+  }
+}
+
+// 🔥 On Auth
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { window.location.href = "index.html"; return; }
+  uid = user.uid;
+
+  // process pending first
+  await processPendingRewards();
+
+  db.ref("users/" + uid + "/balance").on("value", snap => {
+    currentBalance = snap.exists() ? parseFloat(snap.val()) : 0;
+    balanceEl.textContent = currentBalance.toFixed(2);
+  });
+
+  db.ref("users/" + uid + "/pending").on("value", snap => {
+    let total = 0, count = 0;
+    if (snap.exists()) { snap.forEach(p => { total += parseFloat(p.val().reward || 0); count++; }); }
+    pendingCountEl.textContent = count;
+    pendingTotalEl.textContent = total.toFixed(2);
+  });
+
+  db.ref("users/" + uid + "/cancelledTasks").on("value", snap => {
+    cancelledCountEl.textContent = snap.exists() ? snap.numChildren() : 0;
+  });
+});
+
+// Generate Task
+generateBtn.addEventListener("click", async () => {
+  const snap = await db.ref("create_task").orderByKey().once("value");
+  if (!snap.exists()) { alert("No tasks available."); return; }
+
+  const [doneSnap, cancelledSnap, pendingSnap] = await Promise.all([
+    db.ref("users/" + uid + "/doneTasks").once("value"),
+    db.ref("users/" + uid + "/cancelledTasks").once("value"),
+    db.ref("users/" + uid + "/pending").once("value")
+  ]);
+
+  const blockedTasks = new Set();
+  if (doneSnap.exists()) Object.keys(doneSnap.val()).forEach(id => blockedTasks.add(id));
+  if (cancelledSnap.exists()) Object.keys(cancelledSnap.val()).forEach(id => blockedTasks.add(id));
+  if (pendingSnap.exists()) pendingSnap.forEach(s => blockedTasks.add(s.val().taskId));
+
+  let found = false;
+  snap.forEach(taskSnap => {
+    if (found) return;
+    const taskId = taskSnap.key;
+    const task = taskSnap.val();
+    if (!task) return;
+    if ((task.completed || 0) >= (task.amount || 0)) return;
+    if (blockedTasks.has(taskId)) return;
+
+    currentTaskId = taskId;
+    currentTask = task;
+    showTask(task, taskId, task.completed || 0);
+    found = true;
+  });
+
+  if (!found) alert("🎉 No new tasks available for you.");
+});
+
+function showTask(task, taskId, completedCount) {
+  visited = false;
+  submitBtn.disabled = true;
+  taskBox.style.display = "block";
+  taskTitle.textContent = task.ad_type || "Untitled Task";
+  taskLink.textContent = task.link || "No link";
+  taskReward.textContent = parseFloat(task.reward_per_user || 0).toFixed(2);
+  taskProgress.textContent = `${completedCount}/${task.amount || 0}`;
+  visitBtn.onclick = () => { window.open(task.link, "_blank"); visited = true; submitBtn.disabled = false; };
+}
+
+// Submit
+submitBtn.addEventListener("click", async () => {
+  if (!visited) { alert("Visit the link first."); return; }
+  if (!fileInput.files[0]) { alert("Upload screenshot."); return; }
+  if (!usernameInput.value.trim()) { alert("Enter username."); return; }
+  submitBtn.disabled = true;
+
+  const file = fileInput.files[0];
+  const proofRef = storage.ref("task_proofs/" + uid + "_" + Date.now() + ".jpg");
+  await proofRef.put(file);
+  const url = await proofRef.getDownloadURL();
+  const reward = parseFloat(currentTask.reward_per_user || 0);
+
+  await db.ref("task_submissions").push({
+    taskId: currentTaskId,
+    userId: uid,
+    username: usernameInput.value.trim(),
+    proofUrl: url,
+    reward: reward,
+    timestamp: Date.now()
+  });
+
+  // mark as done
+  await db.ref("users/" + uid + "/doneTasks/" + currentTaskId).set(true);
+
+  // add to pending (will be processed automatically)
+  await db.ref("users/" + uid + "/pending").push({
+    reward: reward,
+    taskId: currentTaskId,
+    timestamp: Date.now()
+  });
+
+  alert("✅ Task submitted. Reward ₦" + reward.toFixed(2) + " will be credited automatically.");
+  resetTaskUI();
+});
+
+// Cancel
+cancelBtn.addEventListener("click", async () => {
+  if (!currentTaskId) return;
+  await db.ref("users/" + uid + "/cancelledTasks/" + currentTaskId).set(true);
+  alert("🚫 Task cancelled. You won’t see it again.");
+  resetTaskUI();
+});
+
+function resetTaskUI() {
+  taskBox.style.display = "none";
+  fileInput.value = "";
+  usernameInput.value = "";
+  currentTask = null; currentTaskId = null;
+}
+</script>
+</body>
+</html>

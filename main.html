@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniApp - Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+    html, body { margin:0; padding:0; height:100%; font-family:'Comic Neue', cursive; background:#fff; }
+
+    .container { max-width:1000px; margin:0 auto; padding:10px; height:100%; display:flex; flex-direction:column; }
+
+    .header { background:#fff; border:2px solid #008cff; border-radius:12px; display:flex; justify-content:space-between; align-items:center; padding:15px; margin-bottom:15px; }
+    .logo { display:flex; align-items:center; gap:15px; }
+    .logo img { width:60px; height:60px; border-radius:50%; object-fit:cover; }
+    .welcome { font-size:18px; background:#fff; border:2px solid #333; border-radius:20px; padding:6px 15px; }
+    .header-right { display:flex; align-items:center; gap:15px; }
+    .toolbar-btn { width:30px; height:25px; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; }
+    .toolbar-btn div { height:4px; background:#008cff; border-radius:2px; }
+    .toolbar { position:fixed; top:0; left:-250px; width:250px; height:100%; background:#008cff; color:white; transition:left 0.3s; padding-top:80px; display:flex; flex-direction:column; gap:20px; z-index:1000; }
+    .toolbar a { color:white; text-decoration:none; padding:15px 20px; font-size:18px; border-bottom:1px solid rgba(255,255,255,0.3); cursor:pointer; }
+    .toolbar.show { left:0; }
+
+    .balance { background:#fff; border:2px solid #008cff; border-radius:12px; padding:20px; text-align:center; font-size:24px; font-weight:bold; margin-bottom:10px; display:flex; justify-content:center; align-items:center; }
+    .balance span { font-size:30px; }
+    .loading-spinner { border:5px solid #f3f3f3; border-top:5px solid #008cff; border-radius:50%; width:30px; height:30px; animation:spin 0.8s linear infinite; margin:0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .slider-container { width:100%; max-width:1000px; height:150px; border-radius:12px; overflow:hidden; position:relative; margin-bottom:10px; display:none; background:#ddd; cursor:grab; }
+    .slider { display:flex; width:100%; height:100%; transition:transform 0.5s ease-in-out; }
+    .slider a { flex:0 0 100%; height:100%; display:flex; justify-content:center; align-items:center; }
+    .slider img { max-width:100%; max-height:100%; object-fit:contain; object-position:center; display:block; user-drag:none; user-select:none; pointer-events:none; }
+    .dots { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.6); cursor:pointer; }
+    .dot.active { background:#008cff; }
+
+    .action-buttons { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
+    .icon-btns { display:flex; gap:20px; justify-content:center; width:100%; }
+    .icon-btn { display:flex; flex-direction:column; align-items:center; cursor:pointer; flex:1; }
+    .icon-btn img { width:50px; height:50px; object-fit:cover; border-radius:12px; margin-bottom:5px; }
+    .icon-btn span { font-size:12px; font-weight:bold; color:#333; }
+    .createads-btn, .performtask-btn { background:#007bff; color:#fff; padding:10px; flex:1; border:none; border-radius:8px; font-family:'Comic Neue', cursive; font-size:14px; font-weight:bold; cursor:pointer; }
+    .createads-btn:hover { background:#0069d9; }
+    .performtask-btn { background:#ff9800; }
+    .performtask-btn:hover { background:#e68900; }
+
+    .tasks { background:#fff; border:2px solid #008cff; color:#000; padding:15px; font-size:18px; border-radius:12px; margin-bottom:10px; }
+    .reviews { background:#fff; border:2px solid #008cff; border-radius:12px; padding:15px; flex-grow:1; overflow-y:auto; margin-bottom:10px; }
+    .reviews h3 { margin-top:0; font-size:18px; font-weight:normal; color:#008cff; }
+    .review-item { font-size:16px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; }
+    .review-item span { font-weight:bold; }
+
+    /* Ad container */
+    #adContainer { width:320px; height:50px; margin:10px auto; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <img src="omni.png" alt="OmniApp Logo">
+        <div class="welcome" id="welcomeText">HELLO, </div>
+      </div>
+      <div class="header-right">
+        <div class="toolbar-btn" id="toolbarBtn"><div></div><div></div><div></div></div>
+      </div>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <a href="#">Profile</a>
+      <a href="#">Customer Support</a>
+      <a href="#">Help</a>
+      <a id="logoutBtn">Logout</a>
+    </div>
+
+    <div class="balance">
+      <div id="balance"><div class="loading-spinner"></div></div>
+    </div>
+
+    <div class="slider-container" id="sliderContainer">
+      <div class="slider" id="slider"></div>
+      <div class="dots" id="dots"></div>
+    </div>
+
+    <div class="action-buttons">
+      <div class="icon-btns">
+        <div class="icon-btn" id="depositBtn">
+          <img src="dep.png" alt="Deposit">
+          <span>Deposit</span>
+        </div>
+        <div class="icon-btn" id="withdrawBtn">
+          <img src="with.png" alt="Withdraw">
+          <span>Withdraw</span>
+        </div>
+      </div>
+      <button class="createads-btn" id="createAdsBtn">Create Ads</button>
+      <button class="performtask-btn" id="performTaskBtn">Perform Task</button>
+    </div>
+
+    <div class="tasks" id="taskCount">(0) Available Task</div>
+
+    <div class="reviews">
+      <h3>Task Reviews</h3>
+      <div class="review-item">Completed ✅ <span id="completedCount">0</span></div>
+      <div class="review-item">Pending ⏱ <span id="pendingCount">0</span></div>
+      <div class="review-item">Cancelled ❌ <span id="cancelledCount">0</span></div>
+    </div>
+
+    <!-- AdMob Banner under Task Reviews -->
+    <div id="adContainer">
+      <ins class="adsbygoogle"
+           style="display:inline-block;width:320px;height:50px"
+           data-ad-client="ca-pub-2959947594665871"
+           data-ad-slot="YOUR_AD_SLOT_ID"></ins>
+    </div>
+
+  </div>
+
+  <!-- AdSense Script -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDvFDByPPo9zgwKLdPaREz1OVMQCXmPfrs",
+      authDomain: "bets-d795d.firebaseapp.com",
+      databaseURL: "https://bets-d795d-default-rtdb.firebaseio.com",
+      projectId: "bets-d795d",
+      storageBucket: "bets-d795d.appspot.com",
+      messagingSenderId: "384386108287",
+      appId: "1:384386108287:android:d238a5ec8068d9bb9be84a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    const balanceEl = document.getElementById("balance");
+    const welcomeText = document.getElementById("welcomeText");
+
+    function formatMoney(amount){
+      return `<span style="font-family:Arial,sans-serif">₦</span>${parseFloat(amount || 0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    }
+
+    // Toolbar toggle
+    document.getElementById("toolbarBtn").addEventListener("click", e=>{
+      e.stopPropagation();
+      document.getElementById("toolbar").classList.toggle("show");
+    });
+    document.addEventListener("click", e=>{
+      if(!document.getElementById("toolbar").contains(e.target) && !document.getElementById("toolbarBtn").contains(e.target)){
+        document.getElementById("toolbar").classList.remove("show");
+      }
+    });
+    document.getElementById("logoutBtn").onclick = ()=>signOut(auth).then(()=>location.href="index.html");
+
+    // Navigation buttons
+    function go(page){ location.href = page; }
+    document.getElementById("depositBtn").onclick = ()=>go("deposit.html");
+    document.getElementById("withdrawBtn").onclick = ()=>go("withdraw.html");
+    document.getElementById("performTaskBtn").onclick = ()=>go("perform_task.html");
+    document.getElementById("createAdsBtn").onclick = ()=>go("post advert.html");
+
+    // Task tracking
+    let doneSet = new Set();
+    let cancelledSet = new Set();
+    let pendingTaskIds = new Set();
+    let pendingEntriesCount = 0;
+    let activeTaskId = null;
+    let createTasksMap = {};
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ location.href="index.html"; return; }
+      welcomeText.innerText = "HELLO, " + (user.email||"User").split("@")[0].toUpperCase();
+
+      // Real-time balance update
+      onValue(ref(db, `users/${user.uid}/balance`), snapshot=>{
+        let bal = snapshot.exists() ? snapshot.val() : 0;
+        balanceEl.innerHTML = formatMoney(bal);
+      });
+
+      watchUserTaskPaths(user.uid);
+      watchCreateTasks();
+      loadSliderImages();
+    });
+
+    // Watch tasks and auto-complete pending tasks every 30s
+    function watchUserTaskPaths(uid){
+      const pendingRef = ref(db, `users/${uid}/pending`);
+      const doneRef = ref(db, `users/${uid}/doneTasks`);
+      const balanceRef = ref(db, `users/${uid}/balance`);
+      const cancelledRef = ref(db, `users/${uid}/cancelledTasks`);
+      const activeRef = ref(db, `users/${uid}/activeTask`);
+
+      // Done tasks
+      onValue(doneRef, snap => {
+        doneSet.clear();
+        if (snap.exists()) Object.keys(snap.val()).forEach(k => doneSet.add(k));
+        document.getElementById("completedCount").textContent = doneSet.size;
+        recomputeAvailable();
+      });
+
+      // Cancelled tasks
+      onValue(cancelledRef, snap => {
+        cancelledSet.clear();
+        if (snap.exists()) Object.keys(snap.val()).forEach(k => cancelledSet.add(k));
+        document.getElementById("cancelledCount").textContent = cancelledSet.size;
+        recomputeAvailable();
+      });
+
+      // Pending tasks real-time display
+      async function updatePending(){
+        const snap = await get(pendingRef);
+        pendingTaskIds.clear();
+        let pendingTotal = 0;
+        pendingEntriesCount = 0;
+        if(snap.exists()){
+          const val = snap.val();
+          pendingEntriesCount = Object.keys(val).length;
+          Object.values(val).forEach(p=>{
+            if(p){
+              if(p.taskId) pendingTaskIds.add(String(p.taskId));
+              if(p.reward) pendingTotal += parseFloat(p.reward);
+            }
+          });
+        }
+        document.getElementById("pendingCount").innerHTML = `${pendingEntriesCount} (${formatMoney(pendingTotal)})`;
+        recomputeAvailable();
+      }
+      onValue(pendingRef, snap => updatePending());
+      updatePending();
+
+      // Auto-complete pending tasks
+      setInterval(async ()=>{
+        const snap = await get(pendingRef);
+        if(!snap.exists()) return;
+
+        const pendingData = snap.val();
+        let totalReward = 0;
+        let updates = {};
+
+        Object.entries(pendingData).forEach(([key, p])=>{
+          if(p && p.taskId && p.reward){
+            totalReward += parseFloat(p.reward);
+            // Move to doneTasks
+            updates[`users/${uid}/doneTasks/${p.taskId}`] = true;
+            // Remove from pending
+            updates[`users/${uid}/pending/${key}`] = null;
+          }
+        });
+
+        if(totalReward > 0){
+          const balanceSnap = await get(balanceRef);
+          const currentBalance = balanceSnap.exists() ? parseFloat(balanceSnap.val()) : 0;
+          updates[`users/${uid}/balance`] = currentBalance + totalReward;
+          await ref(db).update(updates);
+        }
+      }, 30000);
+
+      // Active task
+      onValue(activeRef, snap => {
+        activeTaskId = (snap.exists() && snap.val().taskId) ? String(snap.val().taskId) : null;
+        recomputeAvailable();
+      });
+    }
+
+    // Watch created tasks
+    function watchCreateTasks(){
+      onValue(ref(db, `create_task`), snap => {
+        createTasksMap = snap.exists() ? snap.val() : {};
+        recomputeAvailable();
+      });
+    }
+
+    // Recompute available tasks
+    function recomputeAvailable(){
+      let available = 0;
+      if(createTasksMap && typeof createTasksMap==="object"){
+        Object.entries(createTasksMap).forEach(([taskId, task])=>{
+          if(!task) return;
+          const amount = Number(task.amount||0);
+          const completed = Number(task.completed||0);
+          if(amount>0 && completed>=amount) return;
+          if(doneSet.has(taskId)) return;
+          if(cancelledSet.has(taskId)) return;
+          if(activeTaskId && String(activeTaskId)===String(taskId)) return;
+          if(pendingTaskIds.has(String(taskId))) return;
+          available++;
+        });
+      }
+      document.getElementById("taskCount").textContent = `(${available}) Available Task`;
+    }
+
+    // Slider logic
+    const sliderContainer = document.getElementById("sliderContainer");
+    const slider = document.getElementById("slider");
+    const dotsContainer = document.getElementById("dots");
+    let slideInterval = null;
+
+    async function loadSliderImages(){
+      try{
+        const snap = await get(ref(db, "viewpager"));
+        if(snap.exists()){
+          const slides = Object.values(snap.val());
+          if(slides.length>0){ renderSlider(slides); startAutoSlide(); }
+        }
+      } catch(e){ console.error("Slider load error", e); }
+    }
+
+    function renderSlider(slides){
+      slider.innerHTML=""; dotsContainer.innerHTML="";
+      sliderContainer.style.display="block";
+      slides.forEach((item, idx)=>{
+        const a = document.createElement("a");
+        a.href = item.link||"#"; a.target="_blank";
+        const img = document.createElement("img"); img.src=item.imageUrl||item.image||"#";
+        img.alt="slide"; img.onerror=()=>{ img.style.background="#333"; img.alt="Image not available"; };
+        a.appendChild(img); slider.appendChild(a);
+        const dot = document.createElement("div");
+        dot.className = "dot"+(idx===0?" active":"");
+        dot.addEventListener("click", ()=>showSlide(idx, slides.length));
+        dotsContainer.appendChild(dot);
+      });
+      showSlide(0, slides.length);
+    }
+
+    function showSlide(index, total){
+      slider.style.transform = `translateX(-${index*100}%)`;
+      [...dotsContainer.children].forEach((dot,i)=>{ dot.classList.toggle("active", i===index); });
+      slider.dataset.current=index; slider.dataset.total=total;
+    }
+
+    function startAutoSlide(){
+      stopAutoSlide();
+      slideInterval=setInterval(()=>{
+        let idx=parseInt(slider.dataset.current||0);
+        let total=parseInt(slider.dataset.total||0);
+        idx=(idx+1)%total; showSlide(idx,total);
+      },4000);
+    }
+
+    function stopAutoSlide(){ if(slideInterval) clearInterval(slideInterval); }
+  </script>
+</body>
+</html>
